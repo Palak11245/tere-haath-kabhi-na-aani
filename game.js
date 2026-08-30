@@ -13,7 +13,8 @@ const $ = s => document.querySelector(s);
 const btn = $('#btn'), intro = $('#intro'), title = $('#title'), kicker = $('#kicker'),
       sub = $('#sub'), arrow = $('#arrow'), hud = $('#hud'), commentEl = $('#comment'),
       bub = $('#bubble'), memeEl = $('#meme'), memeVid = $('#memeVid'), giveup = $('#giveup'),
-      winEl = $('#win'), certImg = $('#cert'), dlLink = $('#dl'), sheila = $('#sheila');
+      winEl = $('#win'), certImg = $('#cert'), dlLink = $('#dl'), sheila = $('#sheila'),
+      grassEl = $('#grass'), gCert = $('#gcert'), gDl = $('#gdl');
 sheila.src = SHEILA_SRC;
 
 const vw = () => innerWidth, vh = () => innerHeight;
@@ -197,7 +198,7 @@ const S = {
   phase: 'intro',
   x: 0, y: 0, rot: 0, sx: 1, sy: 1, scale: 1,
   tw: null, stunUntil: 0, mercyArmed: false, melting: false, lockUntil: 0,
-  vulnerable: false, locked: false, lastAttempt: 0,
+  vulnerable: false, locked: false, lastAttempt: 0, presses: 0, grassShown: false,
   extraStun: 0, tauntDelay: 0, revealed: false,
   attempts: 0, dodges: 0, tier: 0, forced: -1, started: 0,
   mx: -9999, my: -9999, vmx: 0, vmy: 0, lastMove: 0, idleFired: false, speed: 0, dirSign: 0, revs: 0,
@@ -684,6 +685,10 @@ function loop(now) {
     $('#hTime').textContent = (sec / 60 | 0) + ':' + String(sec % 60).padStart(2, '0');
     const marks = [[60, 'min1', 'smh', 'one minute of this'], [180, 'min3', 'smh', 'three minutes. three.'],
       [300, 'min5', 'imagination', 'five minutes. imagine explaining this'], [600, 'min10', 'smh', 'ten minutes. a life.']];
+    if (!S.grassShown && sec >= GRASS_AFTER && (S.forced >= 0 ? S.forced : S.tier) === 3) {
+      S.grassShown = true;
+      showGrass(el);
+    }
     for (const [s, cat, m, cap] of marks) {
       if (sec >= s && !S.marks[cat]) {
         S.marks[cat] = 1; say(cat, true);
@@ -694,7 +699,11 @@ function loop(now) {
   }
   requestAnimationFrame(loop);
 }
-function syncHud() { $('#hAtt').textContent = S.attempts; $('#hDod').textContent = S.dodges; }
+function syncHud() {
+  $('#hClk').textContent = S.presses;
+  $('#hAtt').textContent = S.attempts;
+  $('#hDod').textContent = S.dodges;
+}
 
 function updateTier() {
   if (S.forced >= 0) return;
@@ -733,7 +742,9 @@ addEventListener('mousemove', e => {
 
 /* THE JOKE: dodge fires on mousedown, before the click can ever land. */
 addEventListener('mousedown', e => {
-  if (S.phase !== 'play' || e.target === btn) return;
+  if (S.phase !== 'play') return;
+  S.presses++; syncHud();                 // raw presses, unlike the rate-limited attempts
+  if (e.target === btn) return;
   if (Math.hypot(S.x - e.clientX, S.y - e.clientY) < cfg().grab) dodge(true, false);
 }, true);
 
@@ -797,6 +808,58 @@ addEventListener('keydown', e => {           // demo tier selector for judges
   }
 });
 
+/* ============ the endurance award ============ */
+const GRASS_AFTER = 240;            // seconds at tier 4 before it stops being funny
+
+function showGrass(elapsed) {
+  const m = Math.floor(elapsed / 60);
+  sfx('sad-trombone');
+  setTimeout(() => sfx('emotional-damage-meme'), 900);
+  $('#grassline').textContent = m + ' minutes. the button has not thought about you once.';
+  gCert.src = unemploymentCert(elapsed);
+  gDl.href = gCert.src;
+  grassEl.classList.add('on');
+}
+$('#gclose').addEventListener('click', () => grassEl.classList.remove('on'));
+
+function unemploymentCert(elapsed) {
+  const c = document.createElement('canvas'); c.width = 1200; c.height = 820;
+  const g = c.getContext('2d');
+  g.fillStyle = '#F2B01E'; g.fillRect(0, 0, 1200, 820);
+  g.fillStyle = 'rgba(0,0,0,.13)';
+  for (let y = 0; y < 820; y += 9) for (let x = 0; x < 1200; x += 9) { g.beginPath(); g.arc(x, y, 1.3, 0, 6.284); g.fill(); }
+  g.fillStyle = '#16110A'; g.fillRect(30, 30, 1140, 12); g.fillRect(30, 778, 1140, 12);
+  g.fillRect(30, 30, 12, 760); g.fillRect(1158, 30, 12, 760);
+  g.textAlign = 'center';
+  g.font = '20px "Courier New",monospace';
+  g.fillText('C E R T I F I C A T E   O F', 600, 128);
+  g.font = '78px Impact,"Arial Black",sans-serif';
+  g.fillStyle = '#D62828'; g.fillText('UNEMPLOYMENT', 606, 214);
+  g.fillStyle = '#16110A'; g.fillText('UNEMPLOYMENT', 600, 208);
+  g.font = '22px "Courier New",monospace';
+  g.fillText('this is not an achievement. this is a status report.', 600, 268);
+  const m = Math.floor(elapsed / 60), sc = Math.floor(elapsed % 60);
+  const rows = [['TIME WASTED', m + 'm ' + sc + 's'], ['CLICKS FIRED', String(S.presses)],
+    ['ATTEMPTS', String(S.attempts)], ['DODGES SURVIVED', String(S.dodges)],
+    ['STILL NOT CAUGHT', 'correct'], ['ISSUED', new Date().toLocaleString()]];
+  let y = 340;
+  rows.forEach(r => {
+    g.textAlign = 'left'; g.font = '17px "Courier New",monospace'; g.fillStyle = '#16110A';
+    g.fillText(r[0], 180, y);
+    g.textAlign = 'right'; g.font = '30px Impact,"Arial Black",sans-serif';
+    g.fillText(r[1], 1020, y);
+    g.fillRect(180, y + 12, 840, 3);
+    y += 58;
+  });
+  g.textAlign = 'center';
+  g.font = '54px Impact,"Arial Black",sans-serif';
+  g.fillStyle = '#D62828'; g.fillText('GO TOUCH GRASS.', 604, 724);
+  g.fillStyle = '#16110A'; g.fillText('GO TOUCH GRASS.', 600, 720);
+  g.font = '16px "Courier New",monospace';
+  g.fillText('tere haath kabhi na aani — aur naukri bhi nahi', 600, 756);
+  return c.toDataURL('image/png');
+}
+
 /* ============ win ============ */
 function winGame() {
   S.phase = 'won';
@@ -806,6 +869,7 @@ function winGame() {
   for (let i = 0; i < 10; i++) setTimeout(() => sparks(rnd(80, vw() - 80), rnd(80, vh() * .7), 'WOW'), i * 80);
   S.decoys.slice().forEach(o => popDecoy(o));
   S.vulnerable = false; btn.classList.remove('locked');
+  grassEl.classList.remove('on');
   btn.style.display = 'none'; giveup.style.display = 'none';
   certImg.src = certificate(el); dlLink.href = certImg.src;
   winEl.classList.add('on');
@@ -828,17 +892,17 @@ function certificate(elapsed) {
   g.font = '22px "Courier New",monospace';
   g.fillText('awarded, reluctantly, to a person with time on their hands', 600, 336);
   const m = Math.floor(elapsed / 60), s = Math.floor(elapsed % 60);
-  const rows = [['TIME SPENT', m + 'm ' + s + 's'], ['FAILED ATTEMPTS', String(S.attempts)],
-    ['DODGES SURVIVED', String(S.dodges)], ['PEAK TIER', String(S.tier + 1)],
-    ['ISSUED', new Date().toLocaleString()]];
-  let y = 398;
+  const rows = [['TIME SPENT', m + 'm ' + s + 's'], ['CLICKS FIRED', String(S.presses)],
+    ['FAILED ATTEMPTS', String(S.attempts)], ['DODGES SURVIVED', String(S.dodges)],
+    ['PEAK TIER', String(S.tier + 1)], ['ISSUED', new Date().toLocaleString()]];
+  let y = 366;
   rows.forEach(r => {
     g.textAlign = 'left'; g.font = '17px "Courier New",monospace'; g.fillStyle = '#16110A';
     g.fillText(r[0], 180, y);
     g.textAlign = 'right'; g.font = '30px Impact,"Arial Black",sans-serif';
     g.fillText(r[1], 1020, y);
     g.fillRect(180, y + 12, 840, 3);
-    y += 58;
+    y += 56;
   });
   g.textAlign = 'center';
   g.fillStyle = '#D62828'; g.font = '44px Impact,"Arial Black",sans-serif';
