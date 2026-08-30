@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>tere haath kabhi na aani</title>
+<style>
+/* ============================================================
+   BOLLYWOOD POSTER. flat colour, hard shadows, halftone.
+   PERF RULE: only transform + opacity ever animate.
+   no filter(), no blur, no animated box-shadow. anywhere.
+   ============================================================ */
+:root{
+  --paper:#F2B01E;      /* marigold */
+  --ink:#16110A;
+  --red:#D62828;
+  --cream:#FFF4DC;
+  --dots:rgba(0,0,0,.14);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--paper);
+  font-family:"Arial Black","Arial Bold",Arial,sans-serif;
+  color:var(--ink);cursor:crosshair;user-select:none;-webkit-user-select:none;
+}
+/* static halftone. painted once, never animated. */
+#halftone{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(circle,var(--dots) 1.3px,transparent 1.4px);
+  background-size:9px 9px}
+/* tier colour steps — a single repaint on change, nothing per-frame */
+body[data-tier="1"]{--paper:#EE8B1C;--dots:rgba(0,0,0,.17)}
+body[data-tier="2"]{--paper:#E2571B;--dots:rgba(0,0,0,.2)}
+body[data-tier="3"]{--paper:#C1121F;--dots:rgba(0,0,0,.26);--red:#16110A}
+body[data-tier="3"] #topband{background:var(--cream);color:var(--ink)}
+
+#gate{position:fixed;inset:0;z-index:70;display:none;place-items:center;text-align:center;
+  background:var(--paper);cursor:pointer}
+#gate.on{display:grid}
+#gate h2{font-family:Impact,"Arial Black",sans-serif;font-weight:400;text-transform:uppercase;
+  font-size:clamp(34px,7vw,104px);line-height:.9;color:var(--ink);text-shadow:7px 7px 0 var(--red)}
+#gate p{margin-top:20px;font:400 12px/1.6 "Courier New",monospace;letter-spacing:.28em;
+  text-transform:uppercase;color:var(--ink)}
+
+/* ---------- top band ---------- */
+#topband{position:fixed;top:0;left:0;right:0;z-index:14;background:var(--ink);color:var(--cream);
+  font:400 12px/1 "Courier New",monospace;letter-spacing:.34em;text-transform:uppercase;
+  padding:11px 16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- intro poster ---------- */
+#intro{position:fixed;inset:0;z-index:20;display:flex;align-items:center;padding:0 6vw}
+#titlewrap{max-width:60vw}
+#kicker{display:inline-block;background:var(--ink);color:var(--cream);
+  font:400 clamp(10px,1.05vw,15px)/1 "Courier New",monospace;letter-spacing:.3em;
+  text-transform:uppercase;padding:8px 13px;margin-bottom:2.2vh;opacity:0;
+  transform:rotate(-1.5deg)}
+#title{font-family:Impact,"Haettenschweiler","Arial Black",sans-serif;font-weight:400;
+  font-size:clamp(44px,9.1vw,156px);line-height:.83;letter-spacing:.005em;text-transform:uppercase}
+#title .ln{display:block;white-space:nowrap}
+#title .ch{display:inline-block;opacity:0;transform:translateY(.45em) rotate(-12deg)}
+#title .ch.in{animation:slam .34s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes slam{70%{opacity:1;transform:translateY(-.03em) rotate(2deg) scale(1.09)}
+  100%{opacity:1;transform:none}}
+#title .ln:nth-child(1) .ch{color:var(--ink);text-shadow:7px 7px 0 var(--red)}
+#title .ln:nth-child(2) .ch{color:var(--red);text-shadow:7px 7px 0 var(--ink)}
+#sub{margin-top:2.8vh;max-width:31ch;opacity:0;
+  font:400 clamp(13px,1.45vw,22px)/1.35 "Courier New",monospace;color:var(--ink)}
+#sub b{background:var(--ink);color:var(--cream);padding:2px 6px;font-weight:400;white-space:nowrap}
+#arrow{position:fixed;z-index:24;opacity:0;pointer-events:none;white-space:nowrap;
+  font-family:Impact,"Arial Black",sans-serif;font-size:clamp(15px,1.6vw,25px);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink);transform:rotate(-3deg)}
+.fadein{animation:fi .5s ease forwards}
+@keyframes fi{to{opacity:1}}
+
+/* ---------- THE BUTTON ---------- */
+#btn{
+  position:fixed;left:0;top:0;z-index:30;
+  border:4px solid var(--ink);outline:0;cursor:pointer;
+  font-family:Impact,"Arial Black",sans-serif;font-weight:400;
+  font-size:26px;line-height:1;letter-spacing:.03em;text-transform:uppercase;
+  padding:20px 34px;border-radius:0;
+  color:var(--cream);background:var(--red);
+  box-shadow:9px 9px 0 var(--ink);          /* hard, never animated */
+  transform-origin:50% 50%;white-space:nowrap;
+}
+#btn.hidden{visibility:hidden;pointer-events:none}
+/* recovering from a move: still visible, but clicks pass straight through */
+#btn.locked{pointer-events:none}
+#btn.camo{color:transparent!important;background:var(--paper)!important;
+  border-color:rgba(0,0,0,.10)!important;box-shadow:none!important}
+#btn.blink{visibility:hidden}
+.drop{position:fixed;left:0;top:0;z-index:31;background:var(--red);border-radius:50%;
+  box-shadow:0 0 0 2px var(--ink);pointer-events:none;will-change:transform}
+.decoy{position:fixed;left:0;top:0;z-index:29;border:4px solid var(--ink);
+  font-family:Impact,"Arial Black",sans-serif;font-size:26px;letter-spacing:.03em;
+  text-transform:uppercase;padding:20px 34px;color:var(--cream);background:var(--ink);
+  box-shadow:9px 9px 0 var(--red);cursor:pointer;white-space:nowrap;transform-origin:50% 50%}
+
+/* ---------- the taunt bubble (the whole joke) ---------- */
+#bubble{position:fixed;left:0;top:0;z-index:34;pointer-events:none;opacity:0;
+  background:var(--cream);color:var(--ink);border:4px solid var(--ink);
+  box-shadow:7px 7px 0 var(--ink);padding:12px 18px;white-space:nowrap;
+  font-family:Impact,"Arial Black",sans-serif;font-size:clamp(20px,2.3vw,38px);
+  letter-spacing:.02em;text-transform:uppercase;transform-origin:0% 100%}
+#bubble::after{content:'';position:absolute;left:20px;bottom:-19px;width:0;height:0;
+  border:9px solid transparent;border-top:16px solid var(--ink)}
+#bubble.pop{animation:bub .95s cubic-bezier(.15,1.8,.4,1) forwards}
+@keyframes bub{
+  0%{opacity:0;transform:scale(.3) rotate(-14deg)}
+  16%{opacity:1;transform:scale(1.12) rotate(-5deg)}
+  28%{transform:scale(1) rotate(-3deg)}
+  78%{opacity:1;transform:scale(1) rotate(-3deg)}
+  100%{opacity:0;transform:scale(.95) rotate(-3deg)}}
+
+/* ---------- HUD: a torn ticket stub ---------- */
+#hud{position:fixed;top:44px;left:16px;z-index:15;opacity:0;background:var(--ink);
+  color:var(--cream);padding:11px 14px;transform:rotate(-1.2deg);
+  font:400 12px/1.75 "Courier New",monospace;letter-spacing:.11em;text-transform:uppercase}
+#hud b{color:var(--paper);font-weight:700}
+#giveup{position:fixed;left:0;top:0;z-index:16;opacity:0;background:transparent;
+  border:3px dashed var(--ink);color:var(--ink);cursor:pointer;white-space:nowrap;
+  font:400 12px/1 "Courier New",monospace;letter-spacing:.2em;text-transform:uppercase;padding:12px 16px}
+
+/* ---------- subtitle bar ---------- */
+#comment{position:fixed;left:0;right:0;bottom:0;z-index:18;background:var(--ink);
+  color:var(--cream);text-align:center;padding:16px 20px;opacity:0;
+  transform:translateY(100%);transition:transform .2s ease,opacity .2s ease;
+  font-family:Impact,"Arial Black",sans-serif;font-weight:400;letter-spacing:.02em;
+  font-size:clamp(15px,1.75vw,27px);line-height:1.25;text-transform:uppercase}
+#comment.on{opacity:1;transform:translateY(0)}
+
+/* ---------- meme card: a poster cut-out ---------- */
+#meme{position:fixed;top:44px;right:16px;z-index:19;width:min(300px,44vw);
+  background:var(--red);border:5px solid var(--ink);box-shadow:10px 10px 0 var(--ink);
+  opacity:0;transform:translateY(-18px) rotate(3deg) scale(.85);pointer-events:none;
+  transition:opacity .18s ease,transform .26s cubic-bezier(.2,1.7,.4,1)}
+#meme.on{opacity:1;transform:rotate(-2.2deg)}
+#meme video{display:block;width:100%;height:auto;border-bottom:5px solid var(--ink);background:#000}
+#meme .cap{display:block;padding:9px 11px;background:var(--ink);color:var(--cream);
+  font-family:Impact,"Arial Black",sans-serif;font-size:14px;letter-spacing:.06em;
+  text-transform:uppercase;line-height:1.2}
+
+/* ---------- win ---------- */
+#win{position:fixed;inset:0;z-index:60;display:none;place-items:center;
+  background:var(--ink);cursor:default;padding:20px}
+#win.on{display:grid}
+#cert{display:block;max-width:min(860px,92vw);max-height:66vh;border:5px solid var(--cream)}
+#winline{margin-top:18px;text-align:center;color:var(--cream);
+  font-family:Impact,"Arial Black",sans-serif;font-size:clamp(16px,2vw,26px);
+  letter-spacing:.02em;text-transform:uppercase}
+#winactions{margin-top:18px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+#winactions a,#winactions button{font:400 13px/1 "Courier New",monospace;letter-spacing:.18em;
+  text-transform:uppercase;padding:15px 22px;border:3px solid var(--cream);cursor:pointer;
+  text-decoration:none;color:var(--ink);background:var(--paper)}
+#winactions .ghost{background:transparent;color:var(--cream)}
+
+/* transform-only shake */
+.shake{animation:shk .3s steps(4)}
+@keyframes shk{0%{transform:translate(0,0)}25%{transform:translate(-7px,4px)}
+  50%{transform:translate(6px,-5px)}75%{transform:translate(-4px,-2px)}100%{transform:translate(0,0)}}
+.spark{position:fixed;z-index:28;pointer-events:none;font-family:Impact,"Arial Black",sans-serif;
+  font-size:19px;color:var(--ink);letter-spacing:.05em}
+</style>
+</head>
+<body>
+<div id="halftone"></div>
+<div id="gate"><div>
+  <h2>press anything</h2>
+  <p>the warning has to be heard first</p>
+</div></div>
+<div id="topband">tere haath kabhi na aani &nbsp;&middot;&nbsp; ek button &nbsp;&middot;&nbsp; ek aadmi &nbsp;&middot;&nbsp; koi ummeed nahi</div>
+
+<div id="intro">
+  <div id="titlewrap">
+    <div id="kicker">ek button. ek kaam. tu phir bhi fail karega.</div>
+    <h1 id="title">
+      <span class="ln" data-t="tere haath"></span>
+      <span class="ln" data-t="kabhi na aani"></span>
+    </h1>
+    <div id="sub">Sheila ne 2010 mein hi bata diya tha. <b>tu nahi maana.</b></div>
+  </div>
+</div>
+<div id="arrow">click it &darr;</div>
+
+<button id="btn" class="hidden">Click me.</button>
+<button id="giveup">i give up</button>
+<div id="bubble"></div>
+
+<div id="hud">
+  attempts <b id="hAtt">0</b> &nbsp;dodged <b id="hDod">0</b><br>
+  time <b id="hTime">0:00</b> &nbsp;tier <b id="hTier">1</b>
+</div>
+
+<div id="comment"></div>
+
+<div id="meme"><video id="memeVid" muted loop playsinline preload="auto"></video><span class="cap"></span></div>
+
+<div id="win">
+  <div>
+    <img id="cert" alt="Certificate of Uncatchable Button Achievement">
+    <div id="winline">screenshot it. show someone. watch them not care.</div>
+    <div id="winactions">
+      <a id="dl" download="certificate-of-uncatchable-button-achievement.png">download the evidence</a>
+      <button class="ghost" id="again">do it again, apparently</button>
+    </div>
+  </div>
+</div>
+
+<audio id="sheila" preload="auto"></audio>
+<script src="game.js"></script>
+</body>
+</html>
