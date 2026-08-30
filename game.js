@@ -198,7 +198,7 @@ const S = {
   phase: 'intro',
   x: 0, y: 0, rot: 0, sx: 1, sy: 1, scale: 1,
   tw: null, stunUntil: 0, mercyArmed: false, melting: false, lockUntil: 0,
-  vulnerable: false, locked: false, lastAttempt: 0, presses: 0, grassShown: false,
+  vulnerable: false, locked: false, onTarget: 0, grassShown: false,
   extraStun: 0, tauntDelay: 0, revealed: false,
   attempts: 0, dodges: 0, tier: 0, forced: -1, started: 0,
   mx: -9999, my: -9999, vmx: 0, vmy: 0, lastMove: 0, idleFired: false, speed: 0, dirSign: 0, revs: 0,
@@ -436,13 +436,15 @@ function dodge(fromClick, onButton) {
     const dist = Math.hypot(S.x - S.mx, S.y - S.my);
     S.extraStun = 0; S.tauntDelay = 0;
     let cat = doMove(pick(c.moves));
-    S.dodges++;
+    S.dodges++; updateTier();
     // The stumble is the only way to win, so its odds set the whole difficulty.
     // Impossible in tier 1: you must be made to see the early tricks first. It
     // then gets likelier as the button gets more arrogant. During a hard chase
     // there are 3-5 dodges a second, so these numbers stay deliberately small.
-    const tripOdds = [0, .018, .03, .05][S.forced >= 0 ? S.forced : S.tier] || 0;
-    const tripped = !S.extraStun && S.dodges >= 12 && Math.random() < tripOdds;
+    // No catchable moment exists before tier 3, so tiers 1 and 2 always play out
+    // in full. A win at 5 seconds is not possible any more.
+    const tripOdds = [0, 0, .025, .05][S.forced >= 0 ? S.forced : S.tier] || 0;
+    const tripped = !S.extraStun && S.dodges >= 30 && Math.random() < tripOdds;
     // Recovery time is NOT an invitation. Only these two states are catchable,
     // and both announce themselves loudly.
     S.vulnerable = tripped || cat === 'mercy';
@@ -700,14 +702,14 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 function syncHud() {
-  $('#hClk').textContent = S.presses;
+  $('#hClk').textContent = S.onTarget;
   $('#hAtt').textContent = S.attempts;
   $('#hDod').textContent = S.dodges;
 }
 
 function updateTier() {
   if (S.forced >= 0) return;
-  const a = S.attempts, t = a <= 5 ? 0 : a <= 15 ? 1 : a <= 30 ? 2 : 3;
+  const d = S.dodges, t = d <= 12 ? 0 : d <= 32 ? 1 : d <= 60 ? 2 : 3;
   if (t !== S.tier) {
     S.tier = t; S.scale = TIERS[t].scale; S.dirty = true;
     S.sx = 1; S.sy = 1; btn.style.clipPath = '';
@@ -743,7 +745,16 @@ addEventListener('mousemove', e => {
 /* THE JOKE: dodge fires on mousedown, before the click can ever land. */
 addEventListener('mousedown', e => {
   if (S.phase !== 'play') return;
-  S.presses++; syncHud();                 // raw presses, unlike the rate-limited attempts
+  S.attempts++;                            // every press you make
+  // A press only counts as landing if the cursor was genuinely inside the button
+  // when you pressed. e.target is no use here: while recovering it is
+  // pointer-events:none, so a press that was dead on it still targets the page.
+  if (!btn.classList.contains('hidden')) {
+    const r = btn.getBoundingClientRect();
+    if (e.clientX >= r.left && e.clientX <= r.right &&
+        e.clientY >= r.top && e.clientY <= r.bottom) S.onTarget++;
+  }
+  syncHud();
   if (e.target === btn) return;
   if (Math.hypot(S.x - e.clientX, S.y - e.clientY) < cfg().grab) dodge(true, false);
 }, true);
@@ -766,9 +777,6 @@ addEventListener('click', e => {
   if (S.phase !== 'play' || e.target === btn) return;
   const t = performance.now();
   S.clicks = S.clicks.filter(c => t - c < 1400); S.clicks.push(t);
-  // Rate-limited: machine-gun clicking should not fast-forward the tiers. This is
-  // what was firing you into tier 4 within seconds and skipping the whole ladder.
-  if (t - S.lastAttempt > 150) { S.lastAttempt = t; S.attempts++; updateTier(); syncHud(); }
   sparks(e.clientX, e.clientY);
 
   if (S.mercyArmed) { S.mercyArmed = false; say('mercyMiss', true); sfx('boowomp');
@@ -839,8 +847,8 @@ function unemploymentCert(elapsed) {
   g.font = '22px "Courier New",monospace';
   g.fillText('this is not an achievement. this is a status report.', 600, 268);
   const m = Math.floor(elapsed / 60), sc = Math.floor(elapsed % 60);
-  const rows = [['TIME WASTED', m + 'm ' + sc + 's'], ['CLICKS FIRED', String(S.presses)],
-    ['ATTEMPTS', String(S.attempts)], ['DODGES SURVIVED', String(S.dodges)],
+  const rows = [['TIME WASTED', m + 'm ' + sc + 's'], ['ATTEMPTS', String(S.attempts)],
+    ['ACTUALLY REACHED IT', String(S.onTarget)], ['DODGES SURVIVED', String(S.dodges)],
     ['STILL NOT CAUGHT', 'correct'], ['ISSUED', new Date().toLocaleString()]];
   let y = 340;
   rows.forEach(r => {
@@ -892,8 +900,8 @@ function certificate(elapsed) {
   g.font = '22px "Courier New",monospace';
   g.fillText('awarded, reluctantly, to a person with time on their hands', 600, 336);
   const m = Math.floor(elapsed / 60), s = Math.floor(elapsed % 60);
-  const rows = [['TIME SPENT', m + 'm ' + s + 's'], ['CLICKS FIRED', String(S.presses)],
-    ['FAILED ATTEMPTS', String(S.attempts)], ['DODGES SURVIVED', String(S.dodges)],
+  const rows = [['TIME SPENT', m + 'm ' + s + 's'], ['ATTEMPTS', String(S.attempts)],
+    ['ACTUALLY REACHED IT', String(S.onTarget)], ['DODGES SURVIVED', String(S.dodges)],
     ['PEAK TIER', String(S.tier + 1)], ['ISSUED', new Date().toLocaleString()]];
   let y = 366;
   rows.forEach(r => {
